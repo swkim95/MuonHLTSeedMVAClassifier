@@ -49,4 +49,5 @@ private:
   void getL2MuonVariables( const TrajectorySeed&, GlobalVector, GlobalPoint, edm::Handle<reco::RecoChargedCandidateCollection>, float&, float&, float&, float& ) const;
   void getL1TTVariables(   const TrajectorySeed&, GlobalVector, GlobalPoint, edm::Handle<l1t::TkMuonCollection>, float&, float& ) const;
 };
+
 #endif

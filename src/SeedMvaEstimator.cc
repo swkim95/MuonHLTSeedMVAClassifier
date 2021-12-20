@@ -145,7 +145,7 @@ void SeedMvaEstimator::getL1TTVariables(
 float SeedMvaEstimator::computeMva( const TrajectorySeed& seed,
   GlobalVector global_p,
   GlobalPoint  global_x,
-  // edm::Handle<l1t::MuonBxCollection> h_L1Muon,
+  //  edm::Handle<l1t::MuonBxCollection> h_L1Muon,
   edm::Handle<reco::RecoChargedCandidateCollection> h_L2Muon,
   edm::Handle<l1t::TkMuonCollection> h_L1TkMu
 ) const {

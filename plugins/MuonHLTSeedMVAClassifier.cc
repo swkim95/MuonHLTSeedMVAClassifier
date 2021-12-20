@@ -40,7 +40,20 @@
 #include "DataFormats/TrajectoryState/interface/LocalTrajectoryParameters.h"
 #include "DataFormats/TrackingRecHit/interface/TrackingRecHit.h"
 
-#include "HLTrigger/MuonHLTSeedMVAClassifier/interface/SeedMvaEstimator.h"
+#include "HLTrigger/MuonHLTSeedMVAClassifier/interface/SeedMvaEstimator2.h"
+
+
+// For Phase 2 variables
+// -- for L1TkMu propagation
+#include "TrackingTools/GeomPropagators/interface/Propagator.h"
+#include "TrackingTools/Records/interface/TrackingComponentsRecord.h"
+#include "TrackingTools/TrajectoryState/interface/FreeTrajectoryState.h"
+#include "RecoTracker/TkDetLayers/interface/GeometricSearchTracker.h"
+#include "RecoTracker/TkDetLayers/interface/GeometricSearchTrackerBuilder.h"
+#include "Geometry/TrackerNumberingBuilder/interface/GeometricDet.h"
+#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
+#include "Geometry/Records/interface/TrackerTopologyRcd.h"
 
 //
 // class declaration
@@ -75,7 +88,7 @@ class MuonHLTSeedMVAClassifier : public edm::stream::EDProducer<> {
 		edm::EDGetTokenT<l1t::TkMuonCollection>                t_L1TkMu_;
 		edm::EDGetTokenT<reco::RecoChargedCandidateCollection> t_L2Muon_;
 
-		typedef std::vector< std::pair<SeedMvaEstimator*, SeedMvaEstimator*> > pairSeedMvaEstimator;
+		typedef std::vector< std::pair<SeedMvaEstimatorPhase2*, SeedMvaEstimatorPhase2*> > pairSeedMvaEstimator;
 		pairSeedMvaEstimator mvaEstimator;
 
 		edm::FileInPath mvaFile_B_0_;
@@ -104,9 +117,10 @@ class MuonHLTSeedMVAClassifier : public edm::stream::EDProducer<> {
 			const TrajectorySeed& seed,
 			GlobalVector global_p,
 			GlobalPoint  global_x,
-			// edm::Handle<l1t::MuonBxCollection>& h_L1Muon,
 			edm::Handle<l1t::TkMuonCollection>& h_L1TkMu,
-			edm::Handle<reco::RecoChargedCandidateCollection>& h_L2Muon,
+			edm::ESHandle<MagneticField>& magfieldH,
+			const Propagator& propagatorAlong,
+			GeometricSearchTracker* geomTracker,
 			float offset
 		);
 };
@@ -152,14 +166,14 @@ MuonHLTSeedMVAClassifier::MuonHLTSeedMVAClassifier(const edm::ParameterSet& iCon
 	produces<TrajectorySeedCollection>();
 
 	mvaEstimator = {
-		make_pair( new SeedMvaEstimator(mvaFile_B_0_, mvaScaleMean_B_, mvaScaleStd_B_),
-		           new SeedMvaEstimator(mvaFile_E_0_, mvaScaleMean_E_, mvaScaleStd_E_) ),
-		make_pair( new SeedMvaEstimator(mvaFile_B_1_, mvaScaleMean_B_, mvaScaleStd_B_),
-		           new SeedMvaEstimator(mvaFile_E_1_, mvaScaleMean_E_, mvaScaleStd_E_) ),
-		make_pair( new SeedMvaEstimator(mvaFile_B_2_, mvaScaleMean_B_, mvaScaleStd_B_),
-		           new SeedMvaEstimator(mvaFile_E_2_, mvaScaleMean_E_, mvaScaleStd_E_) ),
-		make_pair( new SeedMvaEstimator(mvaFile_B_3_, mvaScaleMean_B_, mvaScaleStd_B_),
-		           new SeedMvaEstimator(mvaFile_E_3_, mvaScaleMean_E_, mvaScaleStd_E_) )
+		make_pair( new SeedMvaEstimatorPhase2(mvaFile_B_0_, mvaScaleMean_B_, mvaScaleStd_B_),
+		           new SeedMvaEstimatorPhase2(mvaFile_E_0_, mvaScaleMean_E_, mvaScaleStd_E_) ),
+		make_pair( new SeedMvaEstimatorPhase2(mvaFile_B_1_, mvaScaleMean_B_, mvaScaleStd_B_),
+		           new SeedMvaEstimatorPhase2(mvaFile_E_1_, mvaScaleMean_E_, mvaScaleStd_E_) ),
+		make_pair( new SeedMvaEstimatorPhase2(mvaFile_B_2_, mvaScaleMean_B_, mvaScaleStd_B_),
+		           new SeedMvaEstimatorPhase2(mvaFile_E_2_, mvaScaleMean_E_, mvaScaleStd_E_) ),
+		make_pair( new SeedMvaEstimatorPhase2(mvaFile_B_3_, mvaScaleMean_B_, mvaScaleStd_B_),
+		           new SeedMvaEstimatorPhase2(mvaFile_E_3_, mvaScaleMean_E_, mvaScaleStd_E_) )
 	};
 }
 
@@ -183,6 +197,15 @@ void MuonHLTSeedMVAClassifier::produce(edm::Event& iEvent, const edm::EventSetup
 	edm::ESHandle<TrackerGeometry> trkGeom;
 	iSetup.get<TrackerDigiGeometryRecord>().get(trkGeom);
 
+	edm::ESHandle<GeometricDet> geomDet;
+	iSetup.get<IdealGeometryRecord>().get(geomDet);
+
+	edm::ESHandle<TrackerTopology> trkTopo;
+	iSetup.get<TrackerTopologyRcd>().get(trkTopo);
+
+	GeometricSearchTrackerBuilder builder;
+	GeometricSearchTracker* geomTracker = builder.build(&(*geomDet), &(*trkGeom), &(*trkTopo));
+
 	// edm::Handle<l1t::MuonBxCollection> h_L1Muon;
 	// bool hasL1 = iEvent.getByToken( t_L1Muon_, h_L1Muon);
 
@@ -194,6 +217,13 @@ void MuonHLTSeedMVAClassifier::produce(edm::Event& iEvent, const edm::EventSetup
 
 	edm::Handle< TrajectorySeedCollection > h_Seed;
 	bool hasSeed = iEvent.getByToken( t_Seed_, h_Seed );
+
+	edm::ESHandle<MagneticField> magfieldH;
+	iSetup.get<IdealMagneticFieldRecord>().get(magfieldH);
+
+	edm::ESHandle<Propagator> propagatorAlongH;
+	iSetup.get<TrackingComponentsRecord>().get("PropagatorWithMaterialParabolicMf", propagatorAlongH);
+	std::unique_ptr<Propagator> propagatorAlong = SetPropagationDirection(*propagatorAlongH, alongMomentum);
 
 	// if( !( hasL1 && hasL1TkMu && hasL2 && hasSeed ) ) {
 	if( !( hasL1TkMu && hasL2 && hasSeed ) ) {
@@ -230,9 +260,10 @@ void MuonHLTSeedMVAClassifier::produce(edm::Event& iEvent, const edm::EventSetup
 				seed,
 				global_p,
 				global_x,
-				// h_L1Muon,
 				h_L1TkMu,
-				h_L2Muon,
+				magfieldH,
+				*(propagatorAlong.get()),
+				geomTracker,
 				0.5
 			);
 
@@ -286,9 +317,10 @@ void MuonHLTSeedMVAClassifier::produce(edm::Event& iEvent, const edm::EventSetup
 				seed,
 				global_p,
 				global_x,
-				// h_L1Muon,
 				h_L1TkMu,
-				h_L2Muon,
+				magfieldH,
+				*(propagatorAlong.get()),
+				geomTracker,
 				0.5
 			);
 
@@ -311,9 +343,10 @@ std::vector<float> MuonHLTSeedMVAClassifier::getSeedMva(
 	const TrajectorySeed& seed,
 	GlobalVector global_p,
 	GlobalPoint  global_x,
-	// edm::Handle<l1t::MuonBxCollection>& h_L1Muon,
 	edm::Handle<l1t::TkMuonCollection>& h_L1TkMu,
-	edm::Handle<reco::RecoChargedCandidateCollection>& h_L2Muon,
+	edm::ESHandle<MagneticField>& magfieldH,
+	const Propagator& propagatorAlong,
+	GeometricSearchTracker* geomTracker,
 	float offset = 0.5
 ) {
 	std::vector<float> v_mva = {};
@@ -325,9 +358,10 @@ std::vector<float> MuonHLTSeedMVAClassifier::getSeedMva(
 				seed,
 				global_p,
 				global_x,
-				// h_L1Muon,
-				h_L2Muon,
-				h_L1TkMu
+				h_L1TkMu,
+				magfieldH,
+				propagatorAlong,
+				geomTracker
 			);
 			v_mva.push_back( (offset + mva) );
 		}
@@ -336,9 +370,10 @@ std::vector<float> MuonHLTSeedMVAClassifier::getSeedMva(
 				seed,
 				global_p,
 				global_x,
-				// h_L1Muon,
-				h_L2Muon,
-				h_L1TkMu
+				h_L1TkMu,
+				magfieldH,
+				propagatorAlong,
+				geomTracker
 			);
 			v_mva.push_back( (offset + mva) );
 		}
