@@ -152,9 +152,10 @@ vector< pair<LayerHit, LayerTSOS> > SeedMvaEstimatorPhase2::getHitTsosPairs( con
         vector<int> v_tsos_skip( v_tsos.size(), 0 );
         vector< pair<LayerHit, LayerTSOS> > hitTsosPair = {};
         int ihit = 0;
-        // From CMSSW_12_? ~ 
+        // For CMSSW_11_~ 
         for( auto hit = seed.recHits().first; hit!=seed.recHits().second; ++hit ) {
-        //for( const auto hit : seed.recHits() ) {
+        // For CMSSW_12_~ 
+        //for( const auto& hit : seed.recHits() ) {
             // -- look for closest tsos by absolute distance
             // FIXME: this is random choice
             int the_tsos = -99999;
