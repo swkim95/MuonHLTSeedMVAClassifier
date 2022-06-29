@@ -162,7 +162,7 @@ vector< pair<LayerHit, LayerTSOS> > SeedMvaEstimatorPhase2::getHitTsosPairs( con
             float dr_min = 20.;
             for( auto i=0U; i<v_tsos.size(); ++i ) {
                 if( v_tsos_skip.at(i) )  continue;
-                float dr = ( v_tsos.at(i).second.globalPosition() - hit->globalPosition() ).mag();
+                float dr = ( v_tsos.at(i).second.globalPosition() - hit.globalPosition() ).mag();
                 if( dr < dr_min ) {
                     dr_min = dr;
                     the_tsos = i;
@@ -170,8 +170,8 @@ vector< pair<LayerHit, LayerTSOS> > SeedMvaEstimatorPhase2::getHitTsosPairs( con
                 }
             }
             if( the_tsos > -1 ) {
-                const DetLayer* thelayer =  geomTracker->idToLayer( hit->geographicalId() );
-                hitTsosPair.push_back( make_pair( make_pair( thelayer, &*hit), v_tsos.at(the_tsos) ) );
+                const DetLayer* thelayer =  geomTracker->idToLayer( hit.geographicalId() );
+                hitTsosPair.push_back( make_pair( make_pair( thelayer, &hit), v_tsos.at(the_tsos) ) );
             }
             ihit++;
         } // loop on recHits
