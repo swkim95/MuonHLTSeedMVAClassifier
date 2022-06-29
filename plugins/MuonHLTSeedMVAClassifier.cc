@@ -267,10 +267,13 @@ void MuonHLTSeedMVAClassifier::produce(edm::Event& iEvent, const edm::EventSetup
 				0.5
 			);
 
-			float softmax = std::exp(mvas.at(3)) / ( std::exp(mvas.at(0)) + std::exp(mvas.at(1)) + std::exp(mvas.at(2)) + std::exp(mvas.at(3)) );
+			//float softmax = std::exp(mvas.at(3)) / ( std::exp(mvas.at(0)) + std::exp(mvas.at(1)) + std::exp(mvas.at(2)) + std::exp(mvas.at(3)) );
+			float logistic = 1 / ( 1 + std::exp(-mvas.at(0)) );
 
-			if(isB)  pairSeedIdxMvaScore_B.push_back( make_pair( i, softmax ) );
-			else     pairSeedIdxMvaScore_E.push_back( make_pair( i, softmax ) );
+			//if(isB)  pairSeedIdxMvaScore_B.push_back( make_pair( i, softmax ) );
+			//else     pairSeedIdxMvaScore_E.push_back( make_pair( i, softmax ) );
+			if(isB)  pairSeedIdxMvaScore_B.push_back( make_pair( i, logistic ) );
+			else     pairSeedIdxMvaScore_E.push_back( make_pair( i, logistic ) );
 		}
 
 		std::sort(pairSeedIdxMvaScore_B.begin(), pairSeedIdxMvaScore_B.end(), sortByMvaScore );
@@ -324,11 +327,14 @@ void MuonHLTSeedMVAClassifier::produce(edm::Event& iEvent, const edm::EventSetup
 				0.5
 			);
 
-			float softmax = std::exp(mvas.at(3)) / ( std::exp(mvas.at(0)) + std::exp(mvas.at(1)) + std::exp(mvas.at(2)) + std::exp(mvas.at(3)) );
+			//float softmax = std::exp(mvas.at(3)) / ( std::exp(mvas.at(0)) + std::exp(mvas.at(1)) + std::exp(mvas.at(2)) + std::exp(mvas.at(3)) );
+			float logistic = 1 / ( 1 + std::exp(-mvas.at(0)) );
 
 			bool passMva = (
-				(  isB && (softmax > mvaCut_B_) ) ||
-				( !isB && (softmax > mvaCut_E_) )
+				//(  isB && (softmax > mvaCut_B_) ) ||
+				//( !isB && (softmax > mvaCut_E_) )
+				(  isB && (logistic > mvaCut_B_) ) ||
+				( !isB && (logistic > mvaCut_E_) )
 			);
 
 			if( passMva )  result->emplace_back( seed );
@@ -378,9 +384,13 @@ std::vector<float> MuonHLTSeedMVAClassifier::getSeedMva(
 			v_mva.push_back( (offset + mva) );
 		}
 	}
-	if( v_mva.size() != 4 ) {  // this should never happen
+	//if( v_mva.size() != 4 ) {  // this should never happen
+	//	std::cout << "MuonHLTSeedMVAClassifier::getSeedMva: v_mva.size() != 4" << std::endl;
+	//	return { -99999., -99999., -99999., -99999. };
+	//}
+	if( v_mva.size() != 1 ) {  // this should never happen
 		std::cout << "MuonHLTSeedMVAClassifier::getSeedMva: v_mva.size() != 4" << std::endl;
-		return { -99999., -99999., -99999., -99999. };
+		return { -99999. };
 	}
 
 	return v_mva;
@@ -389,7 +399,11 @@ std::vector<float> MuonHLTSeedMVAClassifier::getSeedMva(
 void MuonHLTSeedMVAClassifier::beginJob(){}
 
 void MuonHLTSeedMVAClassifier::endJob(){
-	for( int i=0; i<4; ++i ) {
+	//for( int i=0; i<4; ++i ) {
+	//	delete mvaEstimator.at(i).first;
+	//	delete mvaEstimator.at(i).second;
+	//}
+	for( int i=0; i<1; ++i ) {
 		delete mvaEstimator.at(i).first;
 		delete mvaEstimator.at(i).second;
 	}
